@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Potencia y Cizalla en Biorreactores - U. de América</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'ua-green': '#124734', // Dark green from the U. America logo
+                        'ua-yellow': '#FADB00', // Bright yellow from the header
+                        'ua-light-green': '#D5E624', // Vibrant light green accent
+                        'ua-gray': '#F3F4F6',
+                        'ua-dark': '#1e293b'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        body {
+            background-color: #f8fafc;
+        }
+        .glass-panel {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            border-radius: 0.75rem;
+        }
+        .header-bg {
+            background: linear-gradient(135deg, #124734 0%, #1a5f45 100%);
+        }
+        /* Custom range slider styling */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #124734;
+            cursor: pointer;
+            margin-top: -8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            border: 2px solid #FADB00;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            cursor: pointer;
+            background: #e2e8f0;
+            border-radius: 3px;
+        }
+        input[type=range]:focus { outline: none; }
+    </style>
+</head>
+<body class="text-slate-800 antialiased font-sans min-h-screen flex flex-col">
+
+    <header class="header-bg text-white shadow-lg border-b-4 border-ua-yellow relative overflow-hidden">
+        <!-- Abstract background pattern -->
+        <div class="absolute inset-0 opacity-10" style="background-image: radial-gradient(#FADB00 1px, transparent 1px); background-size: 20px 20px;"></div>
+        
+        <div class="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center relative z-10">
+            <div class="flex items-center mb-4 md:mb-0">
+                <div class="bg-white p-2 rounded-lg mr-4 flex items-center justify-center h-14 w-14 shadow-md border-2 border-ua-yellow">
+                    <i class="fa-solid fa-microscope text-ua-green text-3xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold tracking-tight text-ua-yellow">Cálculo de Potencia y Cizalla en Biorreactores</h1>
+                    <p class="text-white text-sm font-semibold opacity-90">Análisis Fluidodinámico y Efectos Celulares</p>
+                </div>
+            </div>
+            <div class="text-center md:text-right text-sm bg-white/10 p-3 rounded-lg backdrop-blur-sm border border-white/20">
+                <p class="font-bold text-ua-yellow text-base">Profesor Ph.D. Juan Sandoval Herrera</p>
+                <p class="text-slate-100 font-medium">Diplomado en procesos biotecnológicos</p>
+                <p class="text-white text-xs mt-1">Universidad de América, 2026</p>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8 w-full">
+        
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <!-- Columna Izquierda: Entradas -->
+            <div class="lg:col-span-4 space-y-6">
+                
+                <!-- Propiedades del Fluido -->
+                <div class="glass-panel p-5 border-t-4 border-t-ua-green">
+                    <h2 class="text-lg font-bold text-ua-dark mb-4 flex items-center">
+                        <i class="fa-solid fa-vial text-ua-green mr-2"></i> 1. Medio de Cultivo
+                    </h2>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Tipo de Bioproceso</label>
+                        <select id="bioprocessType" class="w-full rounded-md border-gray-300 shadow-sm focus:border-ua-green focus:ring focus:ring-ua-green focus:ring-opacity-50 p-2 border bg-gray-50 font-medium" onchange="updateFluidProperties()">
+                            <option value="animal">Células animales/mamíferos (Ej. CHO, HEK-293)</option>
+                            <option value="bacteria">Bacterias y Levaduras (Ej. E. coli, S. cerevisiae)</option>
+                            <option value="fungi">Caldos fúngicos/polímeros (No Newtonianos)</option>
+                            <option value="custom">Personalizado</option>
+                        </select>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1" title="Densidad del medio">Densidad (&rho;)</label>
+                            <div class="flex items-center">
+                                <input type="number" id="density" value="1010" class="w-full rounded-l-md border-gray-300 shadow-sm focus:border-ua-green p-2 border" onchange="markCustom(); calculateSimulation()">
+                                <span class="bg-gray-100 border border-l-0 border-gray-300 rounded-r-md px-2 py-2 text-xs text-gray-600 font-mono">kg/m&sup3;</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1" title="Viscosidad Dinámica">Viscosidad (&mu;)</label>
+                            <div class="flex items-center">
+                                <input type="number" id="viscosity" value="1.05" step="0.1" class="w-full rounded-l-md border-gray-300 shadow-sm focus:border-ua-green p-2 border" onchange="markCustom(); calculateSimulation()">
+                                <span class="bg-gray-100 border border-l-0 border-gray-300 rounded-r-md px-2 py-2 text-xs text-gray-600 font-mono">mPa&middot;s</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sistema de Agitación -->
+                <div class="glass-panel p-5 border-t-4 border-t-ua-yellow">
+                    <h2 class="text-lg font-bold text-ua-dark mb-4 flex items-center">
+                        <i class="fa-solid fa-fan text-ua-yellow mr-2"></i> 2. Agitación y Geometría
+                    </h2>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Tipo de Impulsor</label>
+                        <select id="impellerType" class="w-full rounded-md border-gray-300 shadow-sm focus:border-ua-green p-2 border bg-gray-50 font-medium" onchange="updateImpellerDetails(); calculateSimulation()">
+                            <option value="rushton" data-np="5.5" data-ks="11.5" data-minrpm="50" data-maxrpm="400">Turbina Rushton (Palas planas)</option>
+                            <option value="pitched" data-np="1.425" data-ks="11.0" data-minrpm="50" data-maxrpm="500">Palas Inclinadas 45&deg; (Axial)</option>
+                            <option value="marine" data-np="0.56" data-ks="10.0" data-minrpm="100" data-maxrpm="1000">Hélice Marina (3 palas)</option>
+                            <option value="anchor" data-np="115" data-ks="25.0" data-minrpm="10" data-maxrpm="150">Áncora (Flujo laminar/trans.)</option>
+                        </select>
+                        <div class="flex justify-between text-xs text-gray-500 mt-1 px-1">
+                            <span>Np: <span id="npDisplay" class="font-bold text-ua-green">5.5</span></span>
+                            <span>Ks (Cizalla): <span id="ksDisplay" class="font-bold text-ua-green">11.5</span></span>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Diámetro del Impulsor (D)</label>
+                        <div class="flex items-center mb-2">
+                            <input type="number" id="diameter" value="0.5" step="0.05" class="w-full rounded-l-md border-gray-300 shadow-sm focus:border-ua-green p-2 border" oninput="updateSliders(); calculateSimulation()">
+                            <span class="bg-gray-100 border border-l-0 border-gray-300 rounded-r-md px-3 py-2 text-sm text-gray-600 font-mono">m</span>
+                        </div>
+                        <input type="range" id="diameterSlider" min="0.1" max="2.0" step="0.05" value="0.5" oninput="updateInputs(); calculateSimulation()">
+                    </div>
+
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                        <label class="block text-sm font-bold text-blue-800 mb-1"><i class="fa-solid fa-gauge-high mr-1"></i> Punto de Operación (N)</label>
+                        <div class="flex items-center mb-2">
+                            <input type="number" id="operatingRpm" value="150" step="10" class="w-full rounded-l-md border-blue-300 shadow-sm focus:border-blue-500 p-2 border font-bold text-blue-900" oninput="updateSliders(); calculateSimulation()">
+                            <span class="bg-blue-100 border border-l-0 border-blue-300 rounded-r-md px-3 py-2 text-sm text-blue-800 font-bold">RPM</span>
+                        </div>
+                        <input type="range" id="rpmSlider" min="10" max="1000" step="5" value="150" oninput="updateInputs(); calculateSimulation()">
+                    </div>
+                </div>
+
+                <div class="glass-panel p-4 hidden lg:block">
+                     <h3 class="text-sm font-bold text-gray-700 mb-3 border-b pb-1">Referencias de Geometría</h3>
+                     <div class="grid grid-cols-2 gap-3">
+                         <div class="border border-gray-200 rounded-lg p-2 bg-white text-center hover:shadow-md transition">
+                             <img src="images (3).jpg" alt="Esquema Tanque" class="h-20 mx-auto object-contain" onerror="this.src='https://placehold.co/150x100/e2e8f0/475569?text=Esquema+Tanque'">
+                             <p class="text-[10px] text-gray-500 mt-2 font-medium">Biorreactor Agitado</p>
+                         </div>
+                         <div class="border border-gray-200 rounded-lg p-2 bg-white text-center hover:shadow-md transition">
+                             <img src="images (2).jpg" alt="Rushton" class="h-20 mx-auto object-contain" onerror="this.src='https://placehold.co/150x100/e2e8f0/475569?text=Rushton+DT'">
+                             <p class="text-[10px] text-gray-500 mt-2 font-medium">Turbina Rushton</p>
+                         </div>
+                         <div class="col-span-2 border border-gray-200 rounded-lg p-2 bg-white text-center hover:shadow-md transition">
+                             <img src="pitched blade impeller.png" alt="PBT" class="h-16 mx-auto object-contain" onerror="this.src='https://placehold.co/200x80/e2e8f0/475569?text=Pitched+Blade+Turbine'">
+                             <p class="text-[10px] text-gray-500 mt-1 font-medium">Pitched Blade (Axial)</p>
+                         </div>
+                     </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-8 flex flex-col space-y-6">
+                
+                <!-- Resultados del Punto de Operación -->
+                <div class="glass-panel p-6 border-t-4 border-t-blue-500 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
+                        <i class="fa-solid fa-calculator text-8xl"></i>
+                    </div>
+                    
+                    <h2 class="text-xl font-bold text-ua-dark mb-4">Análisis del Punto de Operación Actual</h2>
+                    
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                        <div class="bg-gray-50 rounded-lg p-3 border border-gray-200 text-center">
+                            <p class="text-xs text-gray-500 font-bold uppercase mb-1">Potencia (P)</p>
+                            <p class="text-xl font-black text-ua-green" id="resPower">0.0</p>
+                            <p class="text-xs text-gray-500" id="resPowerUnit">W</p>
+                        </div>
+                        <div class="bg-gray-50 rounded-lg p-3 border border-gray-200 text-center">
+                            <p class="text-xs text-gray-500 font-bold uppercase mb-1">Reynolds (Re)</p>
+                            <p class="text-xl font-black text-blue-600" id="resRe">0</p>
+                            <p class="text-xs font-bold px-2 py-0.5 mt-1 rounded-full inline-block" id="resRegime">Turbulento</p>
+                        </div>
+                        <div class="bg-gray-50 rounded-lg p-3 border border-gray-200 text-center">
+                            <p class="text-xs text-gray-500 font-bold uppercase mb-1" title="Tasa de Cizalla Promedio">Cizalla (&gamma;<sub>av</sub>)</p>
+                            <p class="text-xl font-black text-purple-600" id="resShearRate">0.0</p>
+                            <p class="text-xs text-gray-500">s&spadesuit;<sup>-1</sup></p>
+                        </div>
+                        <div class="bg-gray-50 rounded-lg p-3 border border-gray-200 text-center">
+                            <p class="text-xs text-gray-500 font-bold uppercase mb-1" title="Esfuerzo de Corte">Esfuerzo (&tau;)</p>
+                            <p class="text-xl font-black text-orange-600" id="resShearStress">0.0</p>
+                            <p class="text-xs text-gray-500">Pa</p>
+                        </div>
+                    </div>
+
+                    <!-- Alerta Biológica Dinámica -->
+                    <div id="bioAlert" class="hidden rounded-lg p-4 flex items-start space-x-3 transition-all">
+                        <div id="bioAlertIcon" class="mt-0.5 text-xl"></div>
+                        <div>
+                            <h4 id="bioAlertTitle" class="font-bold text-sm"></h4>
+                            <p id="bioAlertMsg" class="text-sm mt-1"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Gráficas de Simulación -->
+                <div class="glass-panel p-6 flex-grow flex flex-col">
+                    <h3 class="text-lg font-bold text-ua-dark mb-4 border-b pb-2">Curvas de Comportamiento (Todo el rango del impulsor)</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 flex-grow">
+                        <!-- Chart 1: Potencia -->
+                        <div class="flex flex-col">
+                            <h4 class="text-sm font-semibold text-center text-gray-600 mb-2">Potencia Consumida vs RPM</h4>
+                            <div class="relative flex-grow" style="min-height: 250px;">
+                                <canvas id="powerChart"></canvas>
+                            </div>
+                            <p class="text-[10px] text-center text-gray-400 mt-2">P = N<sub>p</sub> &middot; &rho; &middot; N<sup>3</sup> &middot; D<sup>5</sup></p>
+                        </div>
+                        
+                        <!-- Chart 2: Reynolds / Cizalla -->
+                        <div class="flex flex-col">
+                            <h4 class="text-sm font-semibold text-center text-gray-600 mb-2">Número de Reynolds vs RPM</h4>
+                            <div class="relative flex-grow" style="min-height: 250px;">
+                                <canvas id="reChart"></canvas>
+                            </div>
+                            <p class="text-[10px] text-center text-gray-400 mt-2">Re = &rho; &middot; N &middot; D<sup>2</sup> / &mu;</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-ua-dark text-slate-400 py-6 text-center text-sm border-t-4 border-ua-green mt-auto">
+        <div class="max-w-7xl mx-auto px-4">
+            <p class="mb-2">Herramienta de simulación fluidodinámica para el diseño y escalado de bioprocesos.</p>
+            <p>&copy; 2026 Universidad de América. Ecuaciones fundamentadas en los principios de fluidos (Metzner-Otto, Rushton).</p>
+            <p class="mt-2 text-xs text-slate-500 font-medium">Basado en: Rushton et al., 1950; Metzner & Otto, 1957; Armenante & Nagamine, 1998; Wierzchowski et al., 2020; Bautista-Monroy et al., 2022; Rewari et al., 2023.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Data Definitions based on prompt documentation
+        const processData = {
+            animal: {
+                rho: 1010, // Avg 1004-1015
+                mu: 1.05,  // Avg 0.85-1.30 mPa.s
+                type: 'animal',
+                maxTau: 0.5, // Pa - Critical shear stress threshold for animal cells (indicative)
+                name: "Células Animales"
+            },
+            bacteria: {
+                rho: 1017.5, // Avg 1005-1030
+                mu: 2.0,   // Avg 1.0-3.0 mPa.s
+                type: 'bacteria',
+                name: "Bacterias / Levaduras"
+            },
+            fungi: {
+                rho: 1030, // Avg 1010-1050
+                mu: 60,    // Avg 10-110 mPa.s (Apparent viscosity)
+                type: 'fungi',
+                name: "Fúngicos (No Newtoniano)"
+            }
+        };
+
+        // Chart instances
+        let powerChartInst = null;
+        let reChartInst = null;
+
+        // UI Updates
+        function updateFluidProperties() {
+            const type = document.getElementById('bioprocessType').value;
+            if (type !== 'custom') {
+                document.getElementById('density').value = processData[type].rho;
+                document.getElementById('viscosity').value = processData[type].mu;
+                calculateSimulation();
+            }
+        }
+
+        function markCustom() {
+            document.getElementById('bioprocessType').value = 'custom';
+        }
+
+        function updateImpellerDetails() {
+            const select = document.getElementById('impellerType');
+            const opt = select.options[select.selectedIndex];
+            
+            document.getElementById('npDisplay').innerText = opt.getAttribute('data-np');
+            document.getElementById('ksDisplay').innerText = opt.getAttribute('data-ks');
+            
+            // Adjust RPM slider range based on impeller type
+            const rpmSlider = document.getElementById('rpmSlider');
+            rpmSlider.min = opt.getAttribute('data-minrpm');
+            rpmSlider.max = opt.getAttribute('data-maxrpm');
+            
+            // Validate current RPM is within bounds
+            let currentRpm = parseFloat(document.getElementById('operatingRpm').value);
+            if (currentRpm < parseFloat(rpmSlider.min)) currentRpm = rpmSlider.min;
+            if (currentRpm > parseFloat(rpmSlider.max)) currentRpm = rpmSlider.max;
+            
+            document.getElementById('operatingRpm').value = currentRpm;
+            rpmSlider.value = currentRpm;
+        }
+
+        function updateSliders() {
+            document.getElementById('diameterSlider').value = document.getElementById('diameter').value;
+            document.getElementById('rpmSlider').value = document.getElementById('operatingRpm').value;
+        }
+
+        function updateInputs() {
+            document.getElementById('diameter').value = document.getElementById('diameterSlider').value;
+            document.getElementById('operatingRpm').value = document.getElementById('rpmSlider').value;
+        }
+
+        // Formatter helper
+        function formatNumber(num, isPower = false) {
+            if(isPower) {
+                if (num < 1000) return { val: num.toFixed(1), unit: 'W' };
+                else if (num < 1000000) return { val: (num / 1000).toFixed(2), unit: 'kW' };
+                else return { val: (num / 1000000).toFixed(2), unit: 'MW' };
+            }
+            // For large numbers like Reynolds
+            if (num > 10000) return num.toExponential(2);
+            return num.toFixed(0);
+        }
+
+        function calculateSimulation() {
+            // 1. Gather inputs
+            const rho = parseFloat(document.getElementById('density').value) || 1000;
+            const mu_mPa = parseFloat(document.getElementById('viscosity').value) || 1.0;
+            const mu = mu_mPa / 1000.0; // Convert to Pa*s (kg/m*s)
+            
+            const D = parseFloat(document.getElementById('diameter').value) || 0.5;
+            const rpm = parseFloat(document.getElementById('operatingRpm').value) || 150;
+            
+            const select = document.getElementById('impellerType');
+            const opt = select.options[select.selectedIndex];
+            const Np = parseFloat(opt.getAttribute('data-np'));
+            const Ks = parseFloat(opt.getAttribute('data-ks'));
+            const minRpm = parseInt(opt.getAttribute('data-minrpm'));
+            const maxRpm = parseInt(opt.getAttribute('data-maxrpm'));
+            const bioprocessType = document.getElementById('bioprocessType').value;
+
+            // 2. Calculations for Current Operating Point
+            const N_rps = rpm / 60.0;
+            
+            // Power: P = Np * rho * N^3 * D^5
+            const power = Np * rho * Math.pow(N_rps, 3) * Math.pow(D, 5);
+            
+            // Reynolds: Re = (rho * N * D^2) / mu
+            const Re = (rho * N_rps * Math.pow(D, 2)) / mu;
+            
+            // Shear Rate (Metzner-Otto): gamma = Ks * N
+            const shearRate = Ks * N_rps;
+            
+            // Shear Stress: tau = mu * gamma
+            const shearStress = mu * shearRate;
+
+            // 3. Update UI for Operating Point
+            const pFmt = formatNumber(power, true);
+            document.getElementById('resPower').innerText = pFmt.val;
+            document.getElementById('resPowerUnit').innerText = pFmt.unit;
+            
+            document.getElementById('resRe').innerText = formatNumber(Re);
+            document.getElementById('resShearRate').innerText = shearRate.toFixed(1);
+            document.getElementById('resShearStress').innerText = shearStress.toFixed(3);
+
+            // Flow Regime formatting
+            const regimeBadge = document.getElementById('resRegime');
+            let regimeName = "";
+            if (Re < 10) {
+                regimeName = "Laminar";
+                regimeBadge.className = "text-xs font-bold px-2 py-0.5 mt-1 rounded-full inline-block bg-yellow-100 text-yellow-800";
+            } else if (Re < 10000) {
+                regimeName = "Transición";
+                regimeBadge.className = "text-xs font-bold px-2 py-0.5 mt-1 rounded-full inline-block bg-orange-100 text-orange-800";
+            } else {
+                regimeName = "Turbulento";
+                regimeBadge.className = "text-xs font-bold px-2 py-0.5 mt-1 rounded-full inline-block bg-blue-100 text-blue-800";
+            }
+            regimeBadge.innerText = regimeName;
+
+            // Biological Alerts Evaluation
+            evaluateBiologicalAlerts(bioprocessType, shearStress, Re, regimeName);
+
+            // 4. Generate data arrays for Charts
+            generateChartData(rho, mu, D, Np, minRpm, maxRpm);
+        }
+
+        function evaluateBiologicalAlerts(type, tau, Re, regime) {
+            const alertBox = document.getElementById('bioAlert');
+            const alertIcon = document.getElementById('bioAlertIcon');
+            const alertTitle = document.getElementById('bioAlertTitle');
+            const alertMsg = document.getElementById('bioAlertMsg');
+            
+            alertBox.classList.remove('hidden', 'bg-red-50', 'text-red-800', 'border-red-200', 'bg-green-50', 'text-green-800', 'border-green-200', 'bg-yellow-50', 'text-yellow-800', 'border-yellow-200');
+            alertBox.classList.add('border');
+
+            if (type === 'animal') {
+                if (tau > 0.5) { // Critical shear for fragile cells
+                    alertBox.classList.add('bg-red-50', 'text-red-800', 'border-red-200');
+                    alertIcon.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
+                    alertTitle.innerText = "Alerta: Alto Esfuerzo de Corte";
+                    alertMsg.innerText = "Las células animales (ej. CHO, HL-60) son muy sensibles al daño hidrodinámico. Un esfuerzo \u03C4 > 0.5 Pa puede causar lisis celular.";
+                } else if (Re > 50000) {
+                    alertBox.classList.add('bg-yellow-50', 'text-yellow-800', 'border-yellow-200');
+                    alertIcon.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i>';
+                    alertTitle.innerText = "Precaución: Turbulencia Elevada";
+                    alertMsg.innerText = "Recomiende monitorear la viabilidad celular. Las células animales prefieren regímenes suaves (Re bajo a moderado) para evitar daño por micro-remolinos.";
+                } else {
+                    alertBox.classList.add('bg-green-50', 'text-green-800', 'border-green-200');
+                    alertIcon.innerHTML = '<i class="fa-solid fa-check-circle"></i>';
+                    alertTitle.innerText = "Condiciones Óptimas";
+                    alertMsg.innerText = "El esfuerzo de corte es lo suficientemente bajo para preservar la integridad celular de cultivos animales.";
+                }
+            } else if (type === 'bacteria') {
+                 if(regime === "Laminar" || regime === "Transición") {
+                    alertBox.classList.add('bg-yellow-50', 'text-yellow-800', 'border-yellow-200');
+                    alertIcon.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i>';
+                    alertTitle.innerText = "Advertencia de Mezclado";
+                    alertMsg.innerText = "Bacterias y levaduras tienen alta demanda de O2. Un régimen no turbulento puede limitar drásticamente el coeficiente de transferencia de masa (kLa).";
+                 } else {
+                    alertBox.classList.add('bg-green-50', 'text-green-800', 'border-green-200');
+                    alertIcon.innerHTML = '<i class="fa-solid fa-check-circle"></i>';
+                    alertTitle.innerText = "Cultivo Robusto";
+                    alertMsg.innerText = "Las bacterias poseen pared celular resistente y operan excelentemente en regímenes turbulentos para maximizar la transferencia de oxígeno.";
+                 }
+            } else if (type === 'fungi') {
+                alertBox.classList.add('bg-blue-50', 'text-blue-800', 'border-blue-200');
+                alertIcon.innerHTML = '<i class="fa-solid fa-info-circle"></i>';
+                alertTitle.innerText = "Reología No Newtoniana";
+                alertMsg.innerText = "Nota: Para hongos filamentosos, la viscosidad es 'aparente' y disminuye localmente cerca del impulsor (comportamiento pseudoplástico). Las zonas alejadas pueden presentar estancamiento.";
+            } else {
+                alertBox.classList.add('hidden'); // Hide for custom unless we add logic
+            }
+        }
+
+        function generateChartData(rho, mu, D, Np, minRpm, maxRpm) {
+            const dataPoints = 20;
+            const step = (maxRpm - minRpm) / dataPoints;
+            
+            const labels = [];
+            const powerData = [];
+            const reData = [];
+
+            for (let i = 0; i <= dataPoints; i++) {
+                let currentRpm = minRpm + (i * step);
+                let currentRps = currentRpm / 60.0;
+                
+                labels.push(Math.round(currentRpm));
+                
+                let p = Np * rho * Math.pow(currentRps, 3) * Math.pow(D, 5);
+                let re = (rho * currentRps * Math.pow(D, 2)) / mu;
+                
+                powerData.push(p);
+                reData.push(re);
+            }
+
+            // Optimize power chart units (kW vs W)
+            const maxP = powerData[powerData.length - 1];
+            let pDivisor = 1;
+            let pLabel = 'Potencia (W)';
+            if (maxP > 1000000) { pDivisor = 1000000; pLabel = 'Potencia (MW)'; }
+            else if (maxP > 2000) { pDivisor = 1000; pLabel = 'Potencia (kW)'; }
+            
+            const displayPower = powerData.map(val => val / pDivisor);
+
+            updateCharts(labels, displayPower, pLabel, reData);
+        }
+
+        function updateCharts(labels, powerData, powerLabel, reData) {
+            const pCtx = document.getElementById('powerChart').getContext('2d');
+            const rCtx = document.getElementById('reChart').getContext('2d');
+
+            if (powerChartInst) powerChartInst.destroy();
+            if (reChartInst) reChartInst.destroy();
+
+            // Gradient for Power Chart
+            let pGrad = pCtx.createLinearGradient(0, 0, 0, 300);
+            pGrad.addColorStop(0, 'rgba(18, 71, 52, 0.6)'); // ua-green
+            pGrad.addColorStop(1, 'rgba(18, 71, 52, 0.0)');
+
+            powerChartInst = new Chart(pCtx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: powerLabel,
+                        data: powerData,
+                        borderColor: '#124734',
+                        backgroundColor: pGrad,
+                        borderWidth: 2,
+                        pointBackgroundColor: '#FADB00',
+                        pointRadius: 3,
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { title: { display: true, text: 'RPM' } },
+                        y: { title: { display: true, text: powerLabel }, beginAtZero: true }
+                    }
+                }
+            });
+
+            // Gradient for Re Chart
+            let rGrad = rCtx.createLinearGradient(0, 0, 0, 300);
+            rGrad.addColorStop(0, 'rgba(37, 99, 235, 0.6)'); // blue-600
+            rGrad.addColorStop(1, 'rgba(37, 99, 235, 0.0)');
+
+            reChartInst = new Chart(rCtx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Reynolds',
+                        data: reData,
+                        borderColor: '#2563eb',
+                        backgroundColor: rGrad,
+                        borderWidth: 2,
+                        pointBackgroundColor: '#fff',
+                        pointBorderColor: '#2563eb',
+                        pointRadius: 3,
+                        fill: true,
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { title: { display: true, text: 'RPM' } },
+                        y: { 
+                            type: 'logarithmic', // Log scale is better for Reynolds
+                            title: { display: true, text: 'Reynolds (Log)' },
+                            min: 1
+                        }
+                    }
+                }
+            });
+        }
+
+        // Initialize App
+        window.onload = function() {
+            updateFluidProperties();
+            updateImpellerDetails();
+            calculateSimulation();
+            
+            // Add MathJax dynamically
+            let script = document.createElement('script');
+            script.src = "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js";
+            document.head.appendChild(script);
+        };
+    </script>
+</body>
+</html>
